@@ -80,6 +80,8 @@ def _render_trajectory_video(
                 sys.exit(1)
             image = outputs[rendered_output_name].cpu().numpy()
             if output_format == "images":
+                if rendered_output_name == "depth":
+                    image = (image.squeeze() * 1000).round().clip(0, 65535).astype("uint16")
                 media.write_image(output_image_dir / f"{camera_idx:05d}.png", image)
             else:
                 images.append(image)
