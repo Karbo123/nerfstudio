@@ -52,6 +52,35 @@ class ModelConfig(InstantiateConfig):
     """specifies number of rays per chunk during eval"""
 
 
+def depth_supervision(get_loss_dict): # NOTE add depth supervision for any models
+    def _get_loss_dict(model, outputs, batch, metrics_dict=None):
+        loss_dict = get_loss_dict(model, outputs, batch, metrics_dict)
+        # if provide depth supervision
+        if "depth" in batch.keys():
+            for depth_key in outputs.keys():
+                if depth_key in ("depth", "depth_coarse", "depth_fine"):
+                    depth_gt   = batch["depth"].to(device=model.device)
+                    depth_pred = outputs[depth_key].squeeze(1)
+                    # apply mask
+                    if "alive_ray_mask" in outputs.keys(): # for NGP
+                        mask = outputs["alive_ray_mask"]
+                        depth_gt   = depth_gt  [mask]
+                        depth_pred = depth_pred[mask]
+                    # only compute on depth >= depth_min
+                    if "depth_min" in batch.keys():
+                        mask = depth_gt >= float(batch["depth_min"][0])
+                        depth_gt   = depth_gt  [mask]
+                        depth_pred = depth_pred[mask]
+                    # compute
+                    if depth_pred.numel() > 0:
+                        depth_loss = nn.functional.mse_loss(depth_gt, depth_pred)
+                    else:
+                        depth_loss = torch.tensor(0.0, device=model.device)
+                    loss_dict[f"{depth_key}_loss"] = depth_loss
+        return loss_dict
+    return _get_loss_dict
+
+
 class Model(nn.Module):
     """Model class
     Where everything (Fields, Optimizers, Samplers, Visualization, etc) is linked together. This should be

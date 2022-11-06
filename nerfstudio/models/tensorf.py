@@ -46,7 +46,7 @@ from nerfstudio.model_components.renderers import (
     RGBRenderer,
 )
 from nerfstudio.model_components.scene_colliders import AABBBoxCollider
-from nerfstudio.models.base_model import Model, VanillaModelConfig
+from nerfstudio.models.base_model import Model, VanillaModelConfig, depth_supervision
 from nerfstudio.utils import colormaps, colors, misc
 
 
@@ -237,6 +237,7 @@ class TensoRFModel(Model):
         outputs = {"rgb": rgb, "accumulation": accumulation, "depth": depth}
         return outputs
 
+    @depth_supervision
     def get_loss_dict(self, outputs, batch, metrics_dict=None) -> Dict[str, torch.Tensor]:
         # Scaling metrics by coefficients to create the losses.
         device = outputs["rgb"].device

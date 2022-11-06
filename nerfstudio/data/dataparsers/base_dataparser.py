@@ -72,6 +72,10 @@ class DataparserOutputs:
     ... "kwargs": dictionary of data to pass into "func"}
     }
     """
+    depth_scale: float = 0.0
+    """Depth scale. A multiplying factor that converts uint16 depth to float32 actual depth. Disable depth loading if set to <=0."""
+    depth_min: float = 0.0
+    """Depth min. Only supervise depth >= depth_min."""
 
     def as_dict(self) -> dict:
         """Returns the dataclass as a dictionary."""

@@ -90,6 +90,12 @@ class Blender(DataParser):
         camera_to_world[..., 3] *= self.scale_factor
         scene_box = SceneBox(aabb=torch.tensor([[-1.5, -1.5, -1.5], [1.5, 1.5, 1.5]], dtype=torch.float32))
 
+        # multiplying scaling factor that convert uint16 depth to actual float32 depth (if <=0, disable)
+        depth_scale = meta.get("integer_depth_scale", 0.0)
+        
+        # only supervise depth >= depth_min
+        depth_min = meta.get("depth_min", 0.0)
+
         cameras = Cameras(
             camera_to_worlds=camera_to_world,
             fx=focal_length,
@@ -104,6 +110,8 @@ class Blender(DataParser):
             cameras=cameras,
             alpha_color=alpha_color_tensor,
             scene_box=scene_box,
+            depth_scale=depth_scale,
+            depth_min=depth_min,
         )
 
         return dataparser_outputs

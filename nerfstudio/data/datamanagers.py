@@ -263,7 +263,8 @@ class VanillaDataManagerConfig(InstantiateConfig):
     camera_optimizer: CameraOptimizerConfig = CameraOptimizerConfig()
     """Specifies the camera pose optimizer used during training. Helpful if poses are noisy, such as for data from
     Record3D."""
-
+    depth_loading: bool = False
+    """Whether try to load depth for training supervision."""
 
 class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
     """Basic stored data manager implementation.
@@ -360,7 +361,10 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
         """Returns the next batch of data from the train dataloader."""
         self.train_count += 1
         image_batch = next(self.iter_train_image_dataloader)
-        batch = self.train_pixel_sampler.sample(image_batch)
+        if (not self.config.depth_loading) and "depth" in image_batch.keys():
+            del image_batch["depth"]
+        focal_length = self.train_dataset.dataparser_outputs.cameras.fx
+        batch = self.train_pixel_sampler.sample(image_batch, focal_length=focal_length)
         ray_indices = batch["indices"]
         ray_bundle = self.train_ray_generator(ray_indices)
         return ray_bundle, batch

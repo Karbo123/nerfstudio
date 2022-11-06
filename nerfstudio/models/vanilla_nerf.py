@@ -37,7 +37,7 @@ from nerfstudio.model_components.renderers import (
     DepthRenderer,
     RGBRenderer,
 )
-from nerfstudio.models.base_model import Model, ModelConfig
+from nerfstudio.models.base_model import Model, ModelConfig, depth_supervision
 from nerfstudio.utils import colormaps, colors, misc
 
 
@@ -141,6 +141,7 @@ class NeRFModel(Model):
         }
         return outputs
 
+    @depth_supervision
     def get_loss_dict(self, outputs, batch, metrics_dict=None) -> Dict[str, torch.Tensor]:
         # Scaling metrics by coefficients to create the losses.
         device = outputs["rgb_coarse"].device

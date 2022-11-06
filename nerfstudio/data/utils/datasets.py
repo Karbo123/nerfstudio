@@ -19,6 +19,9 @@ from __future__ import annotations
 
 from typing import Dict
 
+import cv2
+import os.path as osp
+
 import numpy as np
 import numpy.typing as npt
 import torch
@@ -87,6 +90,25 @@ class InputDataset(Dataset):
             data.update(func(image_idx, **data_func_dict["kwargs"]))
         return data
 
+    def get_depth_data(self, image_idx):
+        """ try load depth image from disk, if not exist, return None
+        """
+        depth_scale = self.dataparser_outputs.depth_scale
+        image_filename = self.dataparser_outputs.image_filenames[image_idx]
+        depth_filename = str(image_filename).replace(".png", "_depth.png")
+        if depth_scale > 0 and osp.exists(depth_filename):
+            depth = cv2.imread(depth_filename, cv2.IMREAD_UNCHANGED)
+            assert len(depth.shape) == 2 # (H, W)
+            assert depth.dtype == np.uint16
+            depth = depth.astype("float32") * depth_scale
+            depth = torch.from_numpy(depth)
+            return depth
+    
     def __getitem__(self, image_idx):
         data = self.get_data(image_idx)
+        # try to load depth data
+        depth = self.get_depth_data(image_idx)
+        if depth is not None:
+            data["depth"] = depth
+            data["depth_min"] = self.dataparser_outputs.depth_min
         return data

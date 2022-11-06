@@ -49,7 +49,7 @@ from nerfstudio.model_components.renderers import (
     UncertaintyRenderer,
 )
 from nerfstudio.model_components.scene_colliders import NearFarCollider
-from nerfstudio.models.base_model import Model
+from nerfstudio.models.base_model import Model, depth_supervision
 from nerfstudio.models.nerfacto import NerfactoModelConfig
 from nerfstudio.utils import colormaps
 
@@ -228,6 +228,7 @@ class SemanticNerfWModel(Model):
         metrics_dict["distortion"] = distortion_loss(outputs["weights_list"], outputs["ray_samples_list"])
         return metrics_dict
 
+    @depth_supervision
     def get_loss_dict(self, outputs, batch, metrics_dict=None):
         loss_dict = {}
         image = batch["image"].to(self.device)

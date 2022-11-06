@@ -17,12 +17,12 @@ Code for sampling pixels.
 """
 
 import random
-from typing import Dict
+from typing import Dict, Optional
 
 import torch
 
 
-def collate_image_dataset_batch(batch: Dict, num_rays_per_batch: int, keep_full_image: bool = False):
+def collate_image_dataset_batch(batch: Dict, num_rays_per_batch: int, focal_length: Optional[torch.Tensor] = None, keep_full_image: bool = False):
     """
     Operates on a batch of images and samples pixels to use for generating rays.
     Returns a collated batch which is input to the Graph.
@@ -49,13 +49,15 @@ def collate_image_dataset_batch(batch: Dict, num_rays_per_batch: int, keep_full_
 
     c, y, x = (i.flatten() for i in torch.split(indices, 1, dim=-1))
     image = batch["image"][c, y, x]
-    mask, semantics_stuff, semantics_thing = None, None, None
+    mask, semantics_stuff, semantics_thing, depth = None, None, None, None
     if "mask" in batch:
         mask = batch["mask"][c, y, x]
     if "semantics_stuff" in batch:
         semantics_stuff = batch["semantics_stuff"][c, y, x]
     if "semantics_thing" in batch:
         semantics_thing = batch["semantics_thing"][c, y, x]
+    if "depth" in batch:
+        depth = batch["depth"][c, y, x]
     assert image.shape == (num_rays_per_batch, 3), image.shape
 
     # Needed to correct the random indices to their actual camera idx locations.
@@ -72,6 +74,18 @@ def collate_image_dataset_batch(batch: Dict, num_rays_per_batch: int, keep_full_
         collated_batch["semantics_stuff"] = semantics_stuff
     if semantics_thing is not None:
         collated_batch["semantics_thing"] = semantics_thing
+    if depth is not None and focal_length is not None:
+        # convert depth to "ray depth (along the ray dir, not projection)"
+        yx = torch.stack([y, x], dim=-1).add(0.5) # (..., 2), 0.5~127.5
+        img_ctr = torch.tensor([image_height / 2.0, image_width / 2.0])
+        r = (yx - img_ctr).norm(dim=-1) # (..., )
+        cosine = torch.atan(r / focal_length[indices[:, 0]]).cos().to(depth.device)
+        depth /= cosine
+        # 
+        collated_batch["depth"] = depth
+    
+    if "depth_min" in batch.keys():
+        collated_batch["depth_min"] = batch["depth_min"]
 
     if keep_full_image:
         collated_batch["full_image"] = batch["image"]
@@ -99,13 +113,13 @@ class PixelSampler:  # pylint: disable=too-few-public-methods
         """
         self.num_rays_per_batch = num_rays_per_batch
 
-    def sample(self, image_batch: Dict):
+    def sample(self, image_batch: Dict, focal_length: Optional[torch.Tensor] = None):
         """Sample an image batch and return a pixel batch.
 
         Args:
             image_batch: batch of images to sample from
         """
         pixel_batch = collate_image_dataset_batch(
-            image_batch, self.num_rays_per_batch, keep_full_image=self.keep_full_image
+            image_batch, self.num_rays_per_batch, focal_length=focal_length, keep_full_image=self.keep_full_image
         )
         return pixel_batch

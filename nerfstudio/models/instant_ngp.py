@@ -44,7 +44,7 @@ from nerfstudio.model_components.renderers import (
     DepthRenderer,
     RGBRenderer,
 )
-from nerfstudio.models.base_model import Model, ModelConfig
+from nerfstudio.models.base_model import Model, ModelConfig, depth_supervision
 from nerfstudio.utils import colormaps, colors
 
 
@@ -212,6 +212,7 @@ class NGPModel(Model):
         metrics_dict["num_samples_per_batch"] = outputs["num_samples_per_ray"].sum()
         return metrics_dict
 
+    @depth_supervision
     def get_loss_dict(self, outputs, batch, metrics_dict=None):
         image = batch["image"].to(self.device)
         mask = outputs["alive_ray_mask"]

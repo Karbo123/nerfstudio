@@ -36,7 +36,7 @@ from nerfstudio.model_components.renderers import (
     DepthRenderer,
     RGBRenderer,
 )
-from nerfstudio.models.base_model import Model, ModelConfig
+from nerfstudio.models.base_model import Model, ModelConfig, depth_supervision
 from nerfstudio.utils import colormaps, colors, misc
 
 
@@ -136,6 +136,7 @@ class MipNerfModel(Model):
         }
         return outputs
 
+    @depth_supervision
     def get_loss_dict(self, outputs, batch, metrics_dict=None):
         image = batch["image"].to(self.device)
         rgb_loss_coarse = self.rgb_loss(image, outputs["rgb_coarse"])
